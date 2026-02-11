@@ -1,0 +1,16 @@
+[
+    {
+        "name": "Mesh Module – SocialCar",
+        "slug": "mesh-module-socialcar",
+        "description": "Car sharing and ride exchange module.",
+        "version": "1.0.0",
+        "type": "free"
+    },
+    {
+        "name": "Mesh Module – SocialBAG",
+        "slug": "mesh-module-socialbag",
+        "description": "Distributed purchasing groups and solidarity markets.",
+        "version": "1.0.0",
+        "type": "free"
+    }
+]
