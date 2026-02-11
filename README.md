@@ -1,4 +1,5 @@
 ## WP Mesh
+Distributed Network of WordPress Sites
 
 <!--
 **wpmesh/wpmesh** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
