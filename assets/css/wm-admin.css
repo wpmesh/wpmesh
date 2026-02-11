@@ -1,0 +1,25 @@
+/* WP Mesh – Admin Styles */
+
+#adminmenu .toplevel_page_wm-network-dashboard .wp-menu-image:before {
+    content: "\f237"; /* dashicons-share-alt2 */
+}
+
+.wm-mesh-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    background: #0073aa;
+}
+
+.wm-status-online {
+    color: #008000;
+    font-weight: bold;
+}
+
+.wm-status-offline {
+    color: #cc0000;
+    font-weight: bold;
+}
