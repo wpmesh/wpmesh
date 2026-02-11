@@ -6,13 +6,16 @@ if (!defined('ABSPATH')) exit;
 /**
  * Handles Mesh federated users.
  * - Local admin sees only local users.
- * - Global admin sees users grouped by node.
- * - When a federated user logs in, they become a local user.
+ * - Mesh Global Admin sees users grouped by node.
+ * - When a federated user logs in, they become a local user (materialization).
  */
 class Users {
 
     private static $instance = null;
 
+    /**
+     * Singleton instance.
+     */
     public static function instance() {
         if (self::$instance === null) self::$instance = new self();
         return self::$instance;
@@ -21,10 +24,19 @@ class Users {
     private function __construct() {
         add_action('rest_api_init', [$this, 'register_routes']);
         add_action('wp_login', [$this, 'materialize_federated_user'], 10, 2);
+        add_action('user_register', [$this, 'tag_local_user']);
     }
 
     /**
-     * REST endpoint: returns local users for this node.
+     * Tags a newly created user as originating from this node.
+     */
+    public function tag_local_user($user_id) {
+        update_user_meta($user_id, 'wm_mesh_federated_origin', Core::get_node_id());
+        update_user_meta($user_id, 'wm_mesh_last_seen', current_time('mysql'));
+    }
+
+    /**
+     * Registers REST routes for user federation.
      */
     public function register_routes() {
 
@@ -36,7 +48,7 @@ class Users {
     }
 
     /**
-     * Returns local users for this node.
+     * Returns local users for this node (REST).
      */
     public function get_local_users() {
 
@@ -49,7 +61,9 @@ class Users {
                 'name'      => $u->display_name,
                 'email'     => $u->user_email,
                 'roles'     => $u->roles,
-                'federated' => get_user_meta($u->ID, 'wm_mesh_federated_origin', true)
+                'federated' => get_user_meta($u->ID, 'wm_mesh_federated_origin', true),
+                'materialized_on' => get_user_meta($u->ID, 'wm_mesh_materialized_on', true),
+                'last_seen' => get_user_meta($u->ID, 'wm_mesh_last_seen', true),
             ];
         }
 
@@ -62,24 +76,25 @@ class Users {
      */
     public function materialize_federated_user($user_login, $user) {
 
-        // If already local, nothing to do
+        // If user has no federated origin, nothing to do.
         if (!get_user_meta($user->ID, 'wm_mesh_federated_origin', true)) {
             return;
         }
 
-        // Mark user as "materialized" on this node
+        // Mark user as materialized on this node and update last seen.
         update_user_meta($user->ID, 'wm_mesh_materialized_on', Core::get_node_id());
+        update_user_meta($user->ID, 'wm_mesh_last_seen', current_time('mysql'));
     }
 
     /**
-     * Returns users grouped by node for global admin.
+     * Returns users grouped by node for Mesh Global Admin.
      */
     public static function get_users_grouped_by_node() {
 
         $registry = Registry::instance()->get_nodes();
         $result = [];
 
-        // Local node first
+        // Local node
         $result['local'] = [
             'node_id' => Core::get_node_id(),
             'users'   => self::get_local_users_static()
@@ -89,7 +104,7 @@ class Users {
         foreach ($registry as $node) {
 
             $url = $node['url'];
-            $endpoint = $url . '/wp-json/wp-mesh/v1/node/users';
+            $endpoint = rtrim($url, '/') . '/wp-json/wp-mesh/v1/node/users';
 
             $response = wp_remote_get($endpoint);
 
@@ -106,7 +121,7 @@ class Users {
 
             $result[$url] = [
                 'node_id' => $node['node_id'],
-                'users'   => $data
+                'users'   => is_array($data) ? $data : []
             ];
         }
 
@@ -114,7 +129,7 @@ class Users {
     }
 
     /**
-     * Static helper for local users.
+     * Static helper: returns local users as array.
      */
     public static function get_local_users_static() {
         $wp_users = get_users();
@@ -126,7 +141,9 @@ class Users {
                 'name'      => $u->display_name,
                 'email'     => $u->user_email,
                 'roles'     => $u->roles,
-                'federated' => get_user_meta($u->ID, 'wm_mesh_federated_origin', true)
+                'federated' => get_user_meta($u->ID, 'wm_mesh_federated_origin', true),
+                'materialized_on' => get_user_meta($u->ID, 'wm_mesh_materialized_on', true),
+                'last_seen' => get_user_meta($u->ID, 'wm_mesh_last_seen', true),
             ];
         }
 
